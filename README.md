@@ -1,5 +1,5 @@
 # GTM-Transformer
-Official Implementation of **Well Googled is Half Done: Multimodal Forecasting of New FashionProduct Sales with Image-based Google Trends** paper
+Official Pytorch Implementation of **Well Googled is Half Done: Multimodal Forecasting of New FashionProduct Sales with Image-based Google Trends** paper
 
 ## Installation
 
@@ -23,7 +23,7 @@ unset INSTALL_DIR
 
 ## Dataset
 
-**VISUELLE** dataset is publicly available to download [here](.)
+**VISUELLE** dataset is publicly available to download [here](https://drive.google.com/file/d/1xB_80cy0MviyPjxn3UDZ7AK39jiHDNJo/view?usp=sharing)
 
 ## Training
 To train the model of GTM-Transformer please use the following scripts. Please check the arguments inside the script before launch.
