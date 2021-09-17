@@ -26,7 +26,7 @@ unset INSTALL_DIR
 
 ## Dataset
 
-**VISUELLE** dataset is publicly available to download [here](https://drive.google.com/file/d/1xB_80cy0MviyPjxn3UDZ7AK39jiHDNJo/view?usp=sharing). Please download it inside the dataset folder.
+**VISUELLE** dataset is publicly available to download [here](https://drive.google.com/file/d/10PHcGcJk43wrYmBVUeIj3c_4TGn9Tdo_/view?usp=sharing). Please download it inside the dataset folder.
 
 ## Training
 To train the model of GTM-Transformer please use the following scripts. Please check the arguments inside the script before launch.
