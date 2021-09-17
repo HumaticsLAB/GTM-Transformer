@@ -29,7 +29,7 @@ unset INSTALL_DIR
 To train the model of GTM-Transformer please use the following scripts. Please check the arguments inside the script before launch.
 
 ```bash
-python train.py
+python train.py --data_folder dataset
 ```
 
 
@@ -37,7 +37,7 @@ python train.py
 To evaluate the model of GTM-Transformer please use the following script .Please check the arguments inside the script before launch.
 
 ```bash
-python forecast.py
+python forecast.py --data_folder dataset --ckpt_path ckpt/model.pth
 ```
 
 ## Citation
