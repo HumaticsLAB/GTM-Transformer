@@ -17,6 +17,9 @@ export INSTALL_DIR=$PWD
 cd $INSTALL_DIR
 git clone https://github.com/VIPS4/GTM-Transformer.git
 cd GTM-Transformer
+mkdir ckpt
+mkdir dataset
+mkdir results
 
 unset INSTALL_DIR
 ```
