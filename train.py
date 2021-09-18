@@ -8,7 +8,7 @@ import pytorch_lightning as pl
 from pytorch_lightning import loggers as pl_loggers
 from pathlib import Path
 from datetime import datetime
-from models.GTMDisjoint import GTM
+from models.GTM import GTM
 from models.FCN import FCN
 from utils.data_multitrends import ZeroShotDataset
 
