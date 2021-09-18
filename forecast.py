@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import pytorch_lightning as pl
 from tqdm import tqdm
-from models.GTMDisjoint import GTM
+from models.GTM import GTM
 from models.FCN import FCN
 from utils.data_multitrends import ZeroShotDataset
 from pathlib import Path
