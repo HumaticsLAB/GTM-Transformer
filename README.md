@@ -3,14 +3,16 @@ Official Pytorch Implementation of **Well Googled is Half Done: Multimodal Forec
 
 ## Installation
 
-We suggest the use of VirtualEnv. Requirements file is available.
+We suggest the use of VirtualEnv.
 
 ```bash
 
 python3 -m venv gtm_venv
 source gtm_venv/bin/activate
 
-pip install -r requirements.txt
+pip install numpy pandas matplotlib opencv-python permetrics Pillow scikit-image scikit-learn scipy tqdm transformers fairseq wandb
+pip install torch torchvision
+pip install pytorch-lightning
 
 export INSTALL_DIR=$PWD
 
