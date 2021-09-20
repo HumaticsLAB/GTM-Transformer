@@ -15,7 +15,7 @@ pip install -r requirements.txt
 export INSTALL_DIR=$PWD
 
 cd $INSTALL_DIR
-git clone https://github.com/VIPS4/GTM-Transformer.git
+git clone https://github.com/HumaticsLAB/GTM-Transformer.git
 cd GTM-Transformer
 mkdir ckpt
 mkdir dataset
