@@ -11,7 +11,12 @@ python3 -m venv gtm_venv
 source gtm_venv/bin/activate
 
 pip install numpy pandas matplotlib opencv-python permetrics Pillow scikit-image scikit-learn scipy tqdm transformers fairseq wandb
+
 pip install torch torchvision
+
+#For CUDA11.0 (NVIDIA 3K Serie GPUs)
+pip install torch==1.9.0+cu111 torchvision==0.10.0+cu111 -f https://download.pytorch.org/whl/torch_stable.html
+
 pip install pytorch-lightning
 
 export INSTALL_DIR=$PWD
