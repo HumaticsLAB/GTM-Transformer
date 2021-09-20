@@ -1,5 +1,3 @@
-import os
-os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
 import argparse
 import torch
 import pandas as pd
@@ -11,40 +9,21 @@ from models.FCN import FCN
 from utils.data_multitrends import ZeroShotDataset
 from pathlib import Path
 from sklearn.metrics import mean_absolute_error
-from permetrics.regression import Metrics
 from pathlib import Path
 
 
 def cal_error_metrics(gt, forecasts):
-    residuals = gt - forecasts
-
     # Absolute errors
-    metr_obj = Metrics(gt, forecasts)
     mae = mean_absolute_error(gt, forecasts)
     wape = 100 * np.sum(np.sum(np.abs(gt - forecasts), axis=-1)) / np.sum(gt)
 
-    #wape = 100 * np.mean(np.sum(np.abs(gt - forecasts), axis=1) / np.sum(gt, axis=1))
-    corrs = np.zeros((gt.shape[0],))
-    for i in range(gt.shape[0]):
-        corrs[i] = np.corrcoef(gt[i, ...], forecasts[i, ...])[0, 1]
-    corr = np.nanmean(corrs)
-    smape = metr_obj.symmetric_mean_absolute_percentage_error(multi_output=None, decimal=5)
-
-
-    # Positive and negative errors
-    negative_idx = np.where(residuals < 0)
-    positive_idx = np.where(residuals >= 0)
-    negative_residuals = residuals[negative_idx]
-    positive_residuals = residuals[positive_idx]
-    mpe = np.sum(positive_residuals)/len(positive_residuals)
-    mne = np.sum(negative_residuals)/len(negative_residuals)
-    return round(mae, 3), round(smape, 3), round(corr,3), round(mpe, 3), round(mne, 3), round(wape, 3)
+    return round(mae, 3), round(wape, 3)
     
 
 def print_error_metrics(y_test, y_hat, rescaled_y_test, rescaled_y_hat):
-    mae, smape, corr, mpe, mne, wape = cal_error_metrics(y_test, y_hat)
-    rescaled_mae, rescaled_smape, rescaled_corr, rescaled_mpe, rescaled_mne, rescaled_wape = cal_error_metrics(rescaled_y_test, rescaled_y_hat)
-    print(mae, smape, corr, mpe, mne, wape, rescaled_mae, rescaled_smape, rescaled_corr, rescaled_mpe, rescaled_mne, rescaled_wape)
+    mae, wape = cal_error_metrics(y_test, y_hat)
+    rescaled_mae, rescaled_wape = cal_error_metrics(rescaled_y_test, rescaled_y_hat)
+    print(mae, wape, rescaled_mae, rescaled_wape)
 
 def run(args):
     print(args)
@@ -57,7 +36,7 @@ def run(args):
 
     # Load sales data    
     test_df = pd.read_csv(Path(args.data_folder + 'test.csv'), parse_dates=['release_date'])
-
+    item_codes = test_df['external_code'].values
 
      # Load category and color encodings
     cat_dict = torch.load(Path(args.data_folder + 'category_labels.pt'))
@@ -75,7 +54,24 @@ def run(args):
     
     # Create model
     model = None
-    if args.use_trends:
+    if args.use_trends == 0:
+        args.model_type = 'FCN'
+        model = FCN(
+            embedding_dim=args.embedding_dim,
+            hidden_dim=args.hidden_dim,
+            output_dim=args.output_dim,
+            cat_dict=cat_dict,
+            col_dict=col_dict,
+            fab_dict=fab_dict,
+            use_trends=args.use_trends,
+            use_text=args.use_text,
+            use_img=args.use_img,
+            trend_len=args.trend_len,
+            num_trends=args.num_trends,
+            use_encoder_mask=args.use_encoder_mask,
+            gpu_num=args.gpu_num
+        )
+    else:
         args.model_type = 'GTM'
         model = GTM(
             embedding_dim=args.embedding_dim,
@@ -85,28 +81,13 @@ def run(args):
             num_layers=args.num_hidden_layers,
             cat_dict=cat_dict,
             col_dict=col_dict,
-            tex_dict=tex_dict,
-            trend_len=args.trend_len, 
-            num_trends= args.num_trends,
-            decoder_input_type=args.decoder_input_type,
+            fab_dict=fab_dict,
+            use_text=args.use_text,
+            use_img=args.use_img,
+            trend_len=args.trend_len,
+            num_trends=args.num_trends,
             use_encoder_mask=args.use_encoder_mask,
             autoregressive=args.autoregressive,
-            gpu_num=args.gpu_num
-        )
-    else:
-        args.model_type = 'FCN'
-        model = FCN(
-            embedding_dim=args.embedding_dim,
-            hidden_dim=args.hidden_dim,
-            output_dim=args.output_dim,
-            cat_dict=cat_dict,
-            col_dict=col_dict,
-            tex_dict=tex_dict,
-            use_trends=args.use_trends, 
-            trend_len=args.trend_len, 
-            num_trends= args.num_trends,
-            decoder_input_type=args.decoder_input_type,
-            use_encoder_mask=args.use_encoder_mask,
             gpu_num=args.gpu_num
         )
     
@@ -126,7 +107,6 @@ def run(args):
             attns.append(att.detach().cpu().numpy())
 
     attns = np.stack(attns)
-
     forecasts = np.array(forecasts)
     gt = np.array(gt)
 
@@ -144,25 +124,24 @@ if __name__ == '__main__':
 
     # General arguments
     parser.add_argument('--data_folder', type=str, default='dataset/')
-    parser.add_argument('--ckpt_path', type=str, default='ckpt/model.pth')
+    parser.add_argument('--ckpt_path', type=str, default='log/path-to-model.ckpt')
     parser.add_argument('--gpu_num', type=int, default=0)
     parser.add_argument('--seed', type=int, default=21)
     
      # Model specific arguments
     parser.add_argument('--use_trends', type=int, default=1)
+    parser.add_argument('--use_img', type=int, default=1)
+    parser.add_argument('--use_text', type=int, default=1)
     parser.add_argument('--trend_len', type=int, default=52)
     parser.add_argument('--num_trends', type=int, default=3)
-    parser.add_argument('--decoder_input_type', type=int, default=3, help='1: Img, 2: Text, 3: Img+Text')
-    parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--embedding_dim', type=int, default=32)
     parser.add_argument('--hidden_dim', type=int, default=64)
     parser.add_argument('--output_dim', type=int, default=12)
-    parser.add_argument('--learning_rate', type=float, default=3e-5)
     parser.add_argument('--use_encoder_mask', type=int, default=1)
-    parser.add_argument('--autoregressive', type=bool, default=False)
+    parser.add_argument('--autoregressive', type=int, default=0)
     parser.add_argument('--num_attn_heads', type=int, default=4)
     parser.add_argument('--num_hidden_layers', type=int, default=1)
-
+    
     parser.add_argument('--wandb_run', type=str, default='Run1')
 
     args = parser.parse_args()

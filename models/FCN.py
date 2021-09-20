@@ -160,11 +160,6 @@ class ImageEmbedder(nn.Module):
         self.resnet = nn.Sequential(*modules)
         for p in self.resnet.parameters():
             p.requires_grad = False
-
-        # Fine tune resnet
-        # for c in list(self.resnet.children())[6:]:
-        #     for p in c.parameters():
-        #         p.requires_grad = True
         
     def forward(self, images):        
         img_embeddings = self.resnet(images)  
@@ -196,7 +191,7 @@ class DummyEmbedder(nn.Module):
         return temporal_embeddings
 
 class FCN(pl.LightningModule):
-    def __init__(self, embedding_dim, hidden_dim, output_dim, cat_dict, col_dict, tex_dict, \
+    def __init__(self, embedding_dim, hidden_dim, output_dim, cat_dict, col_dict, fab_dict, \
         use_trends, use_text, use_img, trend_len, num_trends, use_encoder_mask=1, gpu_num=2):
 
         super().__init__()
@@ -211,7 +206,7 @@ class FCN(pl.LightningModule):
          # Encoder
         self.dummy_encoder = DummyEmbedder(embedding_dim)
         self.image_encoder = ImageEmbedder()
-        self.text_encoder = TextEmbedder(embedding_dim, cat_dict, col_dict, tex_dict, gpu_num)
+        self.text_encoder = TextEmbedder(embedding_dim, cat_dict, col_dict, fab_dict, gpu_num)
         self.gtrend_encoder = GTrendEmbedder(output_dim, hidden_dim, use_encoder_mask, trend_len, num_trends, gpu_num)
         self.static_feature_encoder = FusionNetwork(embedding_dim, hidden_dim, use_img, use_text)
 

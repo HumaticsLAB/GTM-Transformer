@@ -1,13 +1,10 @@
 import math
 import torch
-import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
 from transformers import pipeline
 from torchvision import models
-from pathlib import Path
-from torch.optim.lr_scheduler import LambdaLR
 from fairseq.optim.adafactor import Adafactor
 
 
@@ -55,13 +52,14 @@ class TimeDistributed(nn.Module):
         return y
 
 class FusionNetwork(nn.Module):
-    def __init__(self, embedding_dim, hidden_dim, decoder_input_type, dropout=0.2):
+    def __init__(self, embedding_dim, hidden_dim, use_img, use_text, dropout=0.2):
         super(FusionNetwork, self).__init__()
         
         self.img_pool = nn.AdaptiveAvgPool2d((1,1))
         self.img_linear = nn.Linear(2048, embedding_dim)
-        self.input_type = decoder_input_type
-        input_dim = embedding_dim*max(self.input_type,2)
+        self.use_img = use_img
+        self.use_text = use_text
+        input_dim = embedding_dim + (embedding_dim*use_img) + (embedding_dim*use_text)
         self.feature_fusion = nn.Sequential(
             nn.BatchNorm1d(input_dim),
             nn.Linear(input_dim, input_dim, bias=False),
@@ -74,14 +72,18 @@ class FusionNetwork(nn.Module):
         # Fuse static features together
         pooled_img = self.img_pool(img_encoding)
         condensed_img = self.img_linear(pooled_img.flatten(1))
-        if self.input_type == 3:
-            concat_features = torch.cat([condensed_img, text_encoding, dummy_encoding], dim=1) # no img
-        elif self.input_type == 2:
-            concat_features = torch.cat([text_encoding, dummy_encoding], dim=1) # no img
-        elif self.input_type == 1:
-            concat_features = torch.cat([condensed_img, dummy_encoding], dim=1) # only img
+
+        # Build input
+        decoder_inputs = []
+        if self.use_img == 1:
+            decoder_inputs.append(condensed_img) 
+        if self.use_text == 1:
+            decoder_inputs.append(text_encoding) 
+        decoder_inputs.append(dummy_encoding)
+        concat_features = torch.cat(decoder_inputs, dim=1)
 
         final = self.feature_fusion(concat_features)
+        # final = self.feature_fusion(dummy_encoding)
 
         return final
 
@@ -112,7 +114,6 @@ class GTrendEmbedder(nn.Module):
     def forward(self, gtrends):
         gtrend_emb = self.input_linear(gtrends.permute(0,2,1))
         gtrend_emb = self.pos_embedding(gtrend_emb.permute(1,0,2))
-
         input_mask = self._generate_encoder_mask(gtrend_emb.shape[0], self.forecast_horizon)
         if self.use_mask == 1:
             gtrend_emb = self.encoder(gtrend_emb, input_mask)
@@ -121,7 +122,7 @@ class GTrendEmbedder(nn.Module):
         return gtrend_emb
         
 class TextEmbedder(nn.Module):
-    def __init__(self, embedding_dim, cat_dict, col_dict,fab_dict, gpu_num):
+    def __init__(self, embedding_dim, cat_dict, col_dict, fab_dict, gpu_num):
         super().__init__()
         self.embedding_dim = embedding_dim
         self.cat_dict = {v: k for k, v in cat_dict.items()}
@@ -132,14 +133,10 @@ class TextEmbedder(nn.Module):
         self.dropout = nn.Dropout(0.1)
         self.gpu_num = gpu_num
 
-    def forward(self, category, color, fabric, shape):
-        # Aggregated textual description: color + category e.g "green long sleeve"
-
-        # Color + Fabric + Category
+    def forward(self, category, color, fabric):
         textual_description = [self.col_dict[color.detach().cpu().numpy().tolist()[i]] + ' ' \
                 + self.fab_dict[fabric.detach().cpu().numpy().tolist()[i]] + ' ' \
                 + self.cat_dict[category.detach().cpu().numpy().tolist()[i]] for i in range(len(category))]
-
 
 
         # Use BERT to extract features
@@ -165,7 +162,11 @@ class ImageEmbedder(nn.Module):
         for p in self.resnet.parameters():
             p.requires_grad = False
 
-
+        # Fine tune resnet
+        # for c in list(self.resnet.children())[6:]:
+        #     for p in c.parameters():
+        #         p.requires_grad = True
+        
     def forward(self, images):        
         img_embeddings = self.resnet(images)  
         size = img_embeddings.size()
@@ -231,30 +232,28 @@ class TransformerDecoderLayer(nn.Module):
         return tgt, attn_weights
 
 class GTM(pl.LightningModule):
-    def __init__(self, embedding_dim, hidden_dim, output_dim, num_heads, num_layers, 
-                cat_dict, col_dict, tex_dict, trend_len, num_trends, decoder_input_type, use_encoder_mask=1, autoregressive=False, gpu_num=2):
+    def __init__(self, embedding_dim, hidden_dim, output_dim, num_heads, num_layers, use_text, use_img, \
+                cat_dict, col_dict, fab_dict, trend_len, num_trends, gpu_num, use_encoder_mask=1, autoregressive=False):
         super().__init__()
         self.hidden_dim = hidden_dim
-        self.embedding_dim = output_dim
-        self.output_len = 12
+        self.embedding_dim = embedding_dim
+        self.output_len = output_dim
         self.use_encoder_mask = use_encoder_mask
         self.autoregressive = autoregressive
         self.gpu_num = gpu_num
-        self.learning_rate = 0.1
-        self.warm_up_epochs = 25
         self.save_hyperparameters()
 
          # Encoder
         self.dummy_encoder = DummyEmbedder(embedding_dim)
         self.image_encoder = ImageEmbedder()
-        self.text_encoder = TextEmbedder(embedding_dim, cat_dict, col_dict, tex_dict, gpu_num)
+        self.text_encoder = TextEmbedder(embedding_dim, cat_dict, col_dict, fab_dict, gpu_num)
         self.gtrend_encoder = GTrendEmbedder(output_dim, hidden_dim, use_encoder_mask, trend_len, num_trends, gpu_num)
-        self.static_feature_encoder = FusionNetwork(embedding_dim, hidden_dim, decoder_input_type)
+        self.static_feature_encoder = FusionNetwork(embedding_dim, hidden_dim, use_img, use_text)
 
         # Decoder
         self.decoder_linear = TimeDistributed(nn.Linear(1, hidden_dim))
-        decoder_layer = TransformerDecoderLayer(d_model=self.hidden_dim, nhead=num_heads, 
-                                    dim_feedforward=self.hidden_dim * 4, dropout=0.1)
+        decoder_layer = TransformerDecoderLayer(d_model=self.hidden_dim, nhead=num_heads, \
+                                                dim_feedforward=self.hidden_dim * 4, dropout=0.1)
         
         if self.autoregressive: self.pos_encoder = PositionalEncoding(hidden_dim, max_len=12)
         self.decoder = nn.TransformerDecoder(decoder_layer, num_layers)
@@ -272,13 +271,13 @@ class GTM(pl.LightningModule):
         # Encode features and get inputs
         img_encoding = self.image_encoder(images)
         dummy_encoding = self.dummy_encoder(temporal_features)
-        text_encoding = self.text_encoder(category, color, fabric, shape)
+        text_encoding = self.text_encoder(category, color, fabric)
         gtrend_encoding = self.gtrend_encoder(gtrends)
 
         # Fuse static features together
         static_feature_fusion = self.static_feature_encoder(img_encoding, text_encoding, dummy_encoding)
 
-        if self.autoregressive:
+        if self.autoregressive == 1:
             # Decode
             tgt = torch.zeros(self.output_len, gtrend_encoding.shape[1], gtrend_encoding.shape[-1]).to('cuda:'+str(self.gpu_num))
             tgt[0] = static_feature_fusion
@@ -288,7 +287,7 @@ class GTM(pl.LightningModule):
             decoder_out, attn_weights = self.decoder(tgt, memory, tgt_mask)
             forecast = self.decoder_fc(decoder_out)
         else:
-            # Decode
+            # Decode (generatively/non-autoregressively)
             tgt = static_feature_fusion.unsqueeze(0)
             memory = gtrend_encoding
             decoder_out, attn_weights = self.decoder(tgt, memory)
@@ -298,21 +297,21 @@ class GTM(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = Adafactor(self.parameters(),scale_parameter=True, relative_step=True, warmup_init=True, lr=None)
-
+    
         return [optimizer]
 
 
     def training_step(self, train_batch, batch_idx):
-        item_sales, category, color, textures, temporal_features, gtrends, images = train_batch 
-        forecasted_sales, _ = self.forward(category, color, textures, temporal_features, gtrends, images)
+        item_sales, category, color, fabric, temporal_features, gtrends, images = train_batch 
+        forecasted_sales, _ = self.forward(category, color, fabric, temporal_features, gtrends, images)
         loss = F.mse_loss(item_sales, forecasted_sales.squeeze())
         self.log('train_loss', loss)
 
         return loss
 
-    def validation_step(self, train_batch, batch_idx):
-        item_sales, category, color, textures, temporal_features, gtrends, images = train_batch 
-        forecasted_sales, _ = self.forward(category, color, textures, temporal_features, gtrends, images)
+    def validation_step(self, test_batch, batch_idx):
+        item_sales, category, color, fabric, temporal_features, gtrends, images = test_batch 
+        forecasted_sales, _ = self.forward(category, color, fabric, temporal_features, gtrends, images)
         
         return item_sales.squeeze(), forecasted_sales.squeeze()
 

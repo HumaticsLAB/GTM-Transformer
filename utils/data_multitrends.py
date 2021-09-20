@@ -32,19 +32,18 @@ class ZeroShotDataset():
         gtrends, image_features = [], []
         img_transforms = Compose([Resize((256, 256)), ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         for (idx, row) in tqdm(data.iterrows(), total=len(data), ascii=True):
-            cat, col, fab, fiq_attr, start_date, img_path = row['category'], row['color'], row['fabric'],\
+            cat, col, fab, fiq_attr, start_date, img_path = row['category'], row['color'], row['fabric'], row['extra'], \
                 row['release_date'], row['image_path']
 
-            # Get the gtrend signal from the previous year (52 weeks) of the release date
-            len_gtrend = self.trend_len
+            # Get the gtrend signal up to the previous year (52 weeks) of the release date
             gtrend_start = start_date - pd.DateOffset(weeks=52)
-            cat_gtrend = self.gtrends.loc[gtrend_start:start_date][cat][-52:].values[:len_gtrend]
-            col_gtrend = self.gtrends.loc[gtrend_start:start_date][col][-52:].values[:len_gtrend]
-            fab_gtrend = self.gtrends.loc[gtrend_start:start_date][fab][-52:].values[:len_gtrend]
+            cat_gtrend = self.gtrends.loc[gtrend_start:start_date][cat][-52:].values[:self.trend_len]
+            col_gtrend = self.gtrends.loc[gtrend_start:start_date][col][-52:].values[:self.trend_len]
+            fab_gtrend = self.gtrends.loc[gtrend_start:start_date][fab][-52:].values[:self.trend_len]
 
             cat_gtrend = MinMaxScaler().fit_transform(cat_gtrend.reshape(-1,1)).flatten()
             col_gtrend = MinMaxScaler().fit_transform(col_gtrend.reshape(-1,1)).flatten()
-            tex_gtrend = MinMaxScaler().fit_transform(tex_gtrend.reshape(-1,1)).flatten()
+            fab_gtrend = MinMaxScaler().fit_transform(fab_gtrend.reshape(-1,1)).flatten()
             multitrends =  np.vstack([cat_gtrend, col_gtrend, fab_gtrend])
 
 
@@ -63,7 +62,7 @@ class ZeroShotDataset():
 
         # Create tensors for each part of the input/output
         item_sales, temporal_features = torch.FloatTensor(data.iloc[:, :12].values), torch.FloatTensor(
-            data.iloc[:, 14:18].values)
+            data.iloc[:, 13:17].values)
         categories, colors, fabrics = [self.cat_dict[val] for val in data.iloc[:].category.values], \
                                        [self.col_dict[val] for val in data.iloc[:].color.values], \
                                        [self.fab_dict[val] for val in data.iloc[:].fabric.values]
@@ -86,3 +85,4 @@ class ZeroShotDataset():
         print('Done.')
 
         return data_loader
+
