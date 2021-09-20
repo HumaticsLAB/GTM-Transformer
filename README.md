@@ -9,6 +9,7 @@ We suggest the use of VirtualEnv.
 
 python3 -m venv gtm_venv
 source gtm_venv/bin/activate
+# gtm_venv\Scripts\activate.bat # If you're running on Windows
 
 pip install numpy pandas matplotlib opencv-python permetrics Pillow scikit-image scikit-learn scipy tqdm transformers fairseq wandb
 
