@@ -9,6 +9,7 @@ We suggest the use of VirtualEnv.
 
 python3 -m venv gtm_venv
 source gtm_venv/bin/activate
+# gtm_venv\Scripts\activate.bat # If you're running on Windows
 
 pip install numpy pandas matplotlib opencv-python permetrics Pillow scikit-image scikit-learn scipy tqdm transformers fairseq wandb
 
@@ -33,7 +34,7 @@ unset INSTALL_DIR
 
 ## Dataset
 
-**VISUELLE** dataset is publicly available to download [here](https://drive.google.com/file/d/1yEZPTUsOuygokMdmpt3RMhFoIkkf2ohY/view?usp=sharing). Please download and extract it inside the dataset folder.
+**VISUELLE** dataset is publicly available to download [here](https://drive.google.com/file/d/11Bn2efKfO_PbtdqsSqj8U6y6YgBlRcP6/view?usp=sharing). Please download and extract it inside the dataset folder.
 
 ## Training
 To train the model of GTM-Transformer please use the following scripts. Please check the arguments inside the script before launch.
