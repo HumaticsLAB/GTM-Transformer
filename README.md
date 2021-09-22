@@ -1,5 +1,5 @@
 # GTM-Transformer
-Official Pytorch Implementation of **Well Googled is Half Done: Multimodal Forecasting of New FashionProduct Sales with Image-based Google Trends** paper
+Official Pytorch Implementation of [**Well Googled is Half Done: Multimodal Forecasting of New FashionProduct Sales with Image-based Google Trends**](https://arxiv.org/abs/2109.09824v1) paper
 
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/well-googled-is-half-done-multimodal/new-product-sales-forecasting-on-visuelle)](https://paperswithcode.com/sota/new-product-sales-forecasting-on-visuelle?p=well-googled-is-half-done-multimodal)
 
