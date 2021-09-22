@@ -53,5 +53,10 @@ python forecast.py --data_folder dataset --ckpt_path ckpt/model.pth
 
 ## Citation
 ```
-BibTex
+@misc{skenderi2021googled,
+      title={Well Googled is Half Done: Multimodal Forecasting of New Fashion Product Sales with Image-based Google Trends}, 
+      author={Geri Skenderi and Christian Joppi and Matteo Denitto and Marco Cristani},
+      year={2021},
+      eprint={2109.09824},
+}
 ```
