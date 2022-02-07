@@ -144,7 +144,7 @@ class TextEmbedder(nn.Module):
 
         # BERT gives us embeddings for [CLS] ..  [EOS], which is why we only average the embeddings in the range [1:-1] 
         # We're not fine tuning BERT and we don't want the noise coming from [CLS] or [EOS]
-        word_embeddings = [torch.FloatTensor(x[1:-1]).mean(axis=0) for x in word_embeddings] 
+        word_embeddings = [torch.FloatTensor(x[0][1:-1]).mean(axis=0) for x in word_embeddings] 
         word_embeddings = torch.stack(word_embeddings).to('cuda:'+str(self.gpu_num))
         
         # Embed to our embedding space
