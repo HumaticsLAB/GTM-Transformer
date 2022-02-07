@@ -22,8 +22,6 @@ def run(args):
     # Load sales data
     train_df = pd.read_csv(Path(args.data_folder + 'train.csv'), parse_dates=['release_date'])
     test_df = pd.read_csv(Path(args.data_folder + 'test.csv'), parse_dates=['release_date'])
-    train_df = train_df.iloc[:128, :]
-    test_df = test_df.iloc[:128, :]
 
     # Load category and color encodings
     cat_dict = torch.load(Path(args.data_folder + 'category_labels.pt'))
