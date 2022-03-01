@@ -17,7 +17,8 @@ pip install numpy pandas matplotlib opencv-python permetrics Pillow scikit-image
 
 pip install torch torchvision
 
-#For CUDA11.1 (NVIDIA 3K Serie GPUs)
+# For CUDA11.1 (NVIDIA 3K Serie GPUs)
+# Check official pytorch installation guidelines for your system
 pip install torch==1.9.0+cu111 torchvision==0.10.0+cu111 -f https://download.pytorch.org/whl/torch_stable.html
 
 pip install pytorch-lightning

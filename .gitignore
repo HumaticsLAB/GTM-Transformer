@@ -7,3 +7,4 @@ log/
 models/__pycache__/
 utils/__pycache__/
 train_all_GTM.sh
+.vscode/
